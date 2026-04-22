@@ -11,21 +11,29 @@
 * **Mitigation:** To protect user privacy, the USSD response *never* transmits raw financial data, missed payment counts, or borrowed amounts. It only returns the abstracted reliability score and tier. 
 
 ## 3. USSD Response Templates
-Once the score is calculated on the server (e.g., Member 412 scores 99 - Low Risk), the secretary receives an immediate flash USSD message. 
+Once the score is calculated on the server, the secretary receives an immediate flash USSD message based on the member's profile.
 
+### 3.1 Standard Response (Established Members)
 **Kinyarwanda (Primary):**
 > *"Amanota y'icyizere: Umunyamuryango 412 afite 99/100 (Yizewe). Yemerewe inguzanyo."*
 > *(Translation: Trust Score: Member 412 has 99/100 (Reliable). Approved for loan.)*
 
-**French (Fallback/Option 2):**
+**French (Fallback):**
 > *"Score de Confiance: Le membre 412 a 99/100 (Risque Faible). Approuvé pour prêt."*
+
+### 3.2 New Member Response (Shadow-Scoring)
+For members with less than 4 months of data, the system outputs a widened confidence interval to communicate mathematical uncertainty.
+
+**Kinyarwanda:**
+> *"Amanota: Umunyamuryango 7 afite 96 (Shadow Range: 81-100). Aracyari mushya; itondere inguzanyo."*
+> *(Translation: Score: Member 7 has 96 (Shadow Range: 81-100). Still new; be cautious with the loan.)*
 
 ## 4. Failure Modes & Fallback UX
 Designing for intermittent network reliability in rural areas means we must handle drops gracefully.
 
 * **Failure Mode 1: Network Timeout (Session Drop)**
-  * **Issue:** The USSD session times out before the server can return the XGBoost score.
-  * **Fallback UX:** The system catches the timeout and asynchronously sends a standard SMS once the calculation finishes: *"Ikimina Alert: Your request for Member 412 was delayed. Score: 99/100 (Yizewe)."*
+  * **Issue:** The USSD session times out before the XGBoost model can return a result.
+  * **Fallback UX:** The system catches the timeout and asynchronously sends an SMS once calculation finishes: *"Ikimina Alert: Your request for Member 412 was delayed. Score: 99/100 (Yizewe)."*
 * **Failure Mode 2: Invalid Member ID**
-  * **Issue:** The secretary mistypes the ID (e.g., dialing a member that doesn't exist).
-  * **Fallback UX:** The USSD menu does not crash. It loops back with a clear error: *"Umunyamuryango ntariho. (Member not found). Reply 1 to re-enter ID, or 0 to exit."*
+  * **Issue:** The secretary mistypes the ID or queries a member not in the database.
+  * **Fallback UX:** The menu loops back with a clear error: *"Umunyamuryango ntariho. (Member not found). Reply 1 to re-enter ID, or 0 to exit."*
