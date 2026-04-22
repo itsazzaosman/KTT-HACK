@@ -3,19 +3,19 @@ import numpy as np
 import joblib
 import argparse
 
-def engineer_single_record(member_record, group_record):
+def engineer_single_record(member_record, group_record): # process a single member and group record to produce the same features as in training
     """Applies the exact same feature engineering as the training notebook."""
     # Convert series to dataframes for easy manipulation
     df = pd.DataFrame([member_record]).merge(pd.DataFrame([group_record]), on='group_id', how='left')
     
     role_map = {'member': 0, 'secretary': 1, 'treasurer': 1}
-    df['feat_role_seniority'] = df['role'].map(role_map)
+    df['feat_role_seniority'] = df['role'].map(role_map) # write the role for each member as a feature (0 for regular members, 1 for secretary/treasurer)
     
     df['join_date'] = pd.to_datetime(df['join_date'])
-    df['feat_tenure_months'] = (pd.Timestamp.now() - df['join_date']).dt.days // 30
+    df['feat_tenure_months'] = (pd.Timestamp.now() - df['join_date']).dt.days // 30 # calculate the tenure in months as a feature
     
-    df['feat_repayment_ratio'] = np.where(
-        df['borrowed_total_xaf'] > 0,
+    df['feat_repayment_ratio'] = np.where( # calculate the borrow to repay ratio as a feature (if borrowed is 0, set to 1. Otherwise, repaid / borrowed)
+        df['borrowed_total_xaf'] > 0, # 1 if they reapid all or they never borrowed at all 
         df['repaid_total_xaf'] / df['borrowed_total_xaf'],
         1.0
     )
@@ -91,9 +91,9 @@ if __name__ == "__main__":
         # Determine tier for CLI output
         tier = "High Risk" if final_score <= 40 else "Watch" if final_score <= 70 else "Low Risk"
         
-        print("\n" + "="*40)
+        print("\n" + "$"*40)
         print(f"  IKIMINA DIGITAL TRUST SCORER  ")
-        print("="*40)
+        print("$"*40)
         print(f"Member ID: {args.member}")
         print(f"Group ID:  {group_str}")
         print(f"Reliability Index: {final_score} / 100")
