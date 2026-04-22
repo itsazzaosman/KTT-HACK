@@ -1,51 +1,45 @@
 # Process Log: AIMS KTT Hackathon T1.1
 
-**Name:** Azza Osman
-
+**Name:** Azza Osman  
 **Date:** 22/04/2026
 
 ## 1. Hour-by-Hour Timeline
-*The 4-hour build process.* 
+*The 4-hour build process.*
 
-* **Hour 1 (10:45 AM - 11:45 AM):** * Setup (Repo, SIGNED.md, process_log.md initialized).
-  * Wrote the synthetic data generator script using NumPy and Faker.
-  * Verified data generation and train/test splits.
+* **Hour 1 (10:45 AM - 11:45 AM):** * Setup (Repo, `SIGNED.md`, `process_log.md` initialized).
+    * Wrote the synthetic data generator script using NumPy and Faker.
+    * Verified data generation and train/test splits.
 * **Hour 2 (11:45 AM - 12:45 PM):**
-  * [Fill in: e.g., Data wrangling and engineering the 8+ required features.]
+    * Merged member and group datasets for processing.
+    * Engineered 9 predictive features including `feat_total_missed`, `feat_repayment_ratio`, recency-weighted miss scores, and on-time streaks.
+    * Debugged and resolved pandas indexing issues (NaN alignment) during the train/test split.
 * **Hour 3 (12:45 PM - 1:45 PM):**
-  * [Fill in: e.g., Model training (Logistic Regression/Tree-based), calibration, and holdout evaluation.]
-  * [Fill in: e.g., Generating the 3 diagnostic charts (feature importance, score distribution, per-district heatmap).]
+    * Trained an XGBoost Classifier on the CPU.
+    * Calibrated the probability outputs into a 0-100 Reliability Index, mapping to High Risk (0-40), Watch (41-70), and Low Risk (71-100) tiers.
+    * Evaluated on the 100-member holdout, achieving an ROC-AUC of 0.982 and a Brier Score of 0.031.
+    * Generated the 4 diagnostic charts (ROC Curve, Calibration Plot, Feature Importance, Per-District Heatmap).
 * **Hour 4 (1:45 PM - 2:45 PM):**
-  * [Fill in: e.g., Drafting the `ussd_flow.md` business artifact.]
-  * [Fill in: e.g., Recording the 4-minute video and final submission checks.]
+    * Packaged the standalone `scorer.py` CLI tool.
+    * Drafted the `ussd_flow.md` business artifact, including Kinyarwanda translations for offline users.
+    * Deployed the model (`.pkl`) and formatted the Model Card on the Hugging Face Hub.
+    * Finalized `README.md` and recorded the 4-minute video defense.
 
 ---
 
 ## 2. LLM & Assistant Tool Usage
-*Declaring tools used and the reasoning behind them.* 
-
-* **Tool 1:** Gemini
-  * **Why I used it:** To quickly clarify hackathon deliverables, ensure my administrative setup was perfectly compliant with the rules, and brainstorm the initial logic for the data generator.
-* **Tool 2:** [e.g., GitHub Copilot / Cursor / ChatGPT]
-  * **Why I used it:** [e.g., Autocomplete boilerplate code during feature engineering / writing the matplotlib code for the heatmap.]
+*Declaring tools used and the reasoning behind them.* * **Tool 1: Gemini**
+    * **Why I used it:** To debug a specific pandas NaN indexing error during my feature engineering phase, to translate the USSD fallback prompts into Kinyarwanda for the business artifact, and to figure out how to customize the Seaborn colormap (`cmap='RdYlGn'`) so my geographical heatmap intuitively displayed safe districts in green and risky districts in red.
 
 ---
 
 ## 3. Sample Prompts
-*Three prompts actually used, and one discarded.* 
+*Three prompts actually used, and one discarded.* ### Used Prompts:
+1.  *"Explain to me the deliverables in detila for the AIMS KTT Fellowship Hackathon based "*
+2.  *"Correct it here: #initialize the Model model = XGBClassifier... test_results['actual_default'] = y_test"* (Used to fix the NaN bug in the results dataframe).
+3.  *"Can I change the colour that these people have green... so that when it is safe than it green and when it becomes more risk then the more redish?"* (Used to customize the heatmap visualization).
 
-### Used Prompts:
-1. *"Explain to me the deliverables for the AIMS KTT Fellowship Hackathon based on this email..."*
-2. [Add your next prompt here, e.g., asking about the AR(1) correlation logic for the data generator]
-3. [Add your third prompt here]
-
-### Discarded Prompt:
-* **The Prompt:** [e.g., "Write the entire scorer.py script for me."]
-***Why I discarded it:** [e.g., I realized the brief requires me to defend my own code and logic, so relying on an LLM to generate the entire scoring architecture would leave me unable to properly explain the feature weights during the Live Defense.] [cite: 106, 114]
 
 ---
 
 ## 4. The Single Hardest Decision
-*A one-paragraph reflection.* 
-
-[Leave this blank until the end of your build. Use this space to write a paragraph about a specific technical or product trade-off you had to make. For example, why you chose XGBoost over a simple rule-based system given the CPU constraints, or a specific design choice you made in the Kinyarwanda USSD fallback UX for offline users.]
+*A one-paragraph reflection.* The single hardest technical decision was balancing statistical granularity with business logic during model evaluation, specifically when creating the Calibration Plot. Because the designated holdout set was extremely small (exactly 100 members), plotting a standard calibration curve with 5 or 10 bins created wild, jagged spikes due to tiny sample sizes in the high-risk buckets. While dropping to `n_bins=2` created a mathematically flawless, smooth line, it erased the "Watch" tier completely. Ultimately, I made the decision to strictly use `n_bins=3`. This explicitly aligned the visualization with the three business tiers (Low Risk, Watch, High Risk), prioritizing business utility and transparency for stakeholders over a purely aesthetic chart, even if it meant showing a conservative bias in the middle tier.
