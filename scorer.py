@@ -51,21 +51,35 @@ def engineer_single_record(member_record, group_record): # process a single memb
     return df[feature_cols]
 
 def score(member_record, group_record):
-    """Loads the model, processes features, and returns an integer [0, 100]."""
+    """Calculates reliability with shadow-scoring and group-risk weighting."""
+    # 1. Safety Check: Load the model
     try:
         model = joblib.load('ikimina_xgb_model.pkl')
     except FileNotFoundError:
-        print("Error: ikimina_xgb_model.pkl not found. Please run the train.ipynb notebook first.")
+        print("Error: Model file not found. Ensure train.ipynb has been run.")
         return None
 
+    # 2. Base Model Prediction
     features = engineer_single_record(member_record, group_record)
+    base_prob = model.predict_proba(features)[:, 1][0]
     
-    # Predict probability of default
-    prob_default = model.predict_proba(features)[:, 1][0]
+    # 3. Stretch Goal: Group-Level Risk Multiplier
+    # We penalize scores slightly if the group is less than 2 years old
+    group_age_multiplier = 1.05 if group_record['founded_year'] > 2024 else 1.0
+    adjusted_prob = min(base_prob * group_age_multiplier, 1.0)
     
-    # Convert to 0-100 reliability index
-    reliability_score = int(np.round((1 - prob_default) * 100))
-    return reliability_score
+    # 4. Convert to 0-100 Reliability Index
+    final_score = int(np.round((1 - adjusted_prob) * 100))
+    
+    # 5. Stretch Goal: Shadow-Score Logic
+    # If the member has < 4 months history, we provide a confidence interval
+    tenure = features['feat_tenure_months'].values[0]
+    if tenure < 4:
+        lower_bound = max(0, final_score - 15)
+        upper_bound = min(100, final_score + 10)
+        return f"{final_score} (Shadow Range: {lower_bound}-{upper_bound})"
+    
+    return str(final_score)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ikimina Reliability Scorer")
@@ -84,18 +98,22 @@ if __name__ == "__main__":
     group_record = groups_df[groups_df['group_id'] == group_str]
 
     if member_record.empty or group_record.empty:
-        print(f"Error: Could not find Member {args.member} or Group {group_str} in the datasets.")
+            print(f"Error: Could not find Member {args.member} or Group {group_str} in the datasets.")
     else:
-        final_score = score(member_record.iloc[0], group_record.iloc[0])
+        # Get the result from the score function
+        final_result = score(member_record.iloc[0], group_record.iloc[0])
         
-        # Determine tier for CLI output
-        tier = "High Risk" if final_score <= 40 else "Watch" if final_score <= 70 else "Low Risk"
+        # Extract just the first number for the Tier comparison logic
+        numeric_score = int(str(final_result).split(' ')[0])
+        
+        # Determine tier
+        tier = "High Risk" if numeric_score <= 40 else "Watch" if numeric_score <= 70 else "Low Risk"
         
         print("\n" + "$"*40)
         print(f"  IKIMINA DIGITAL TRUST SCORER  ")
         print("$"*40)
         print(f"Member ID: {args.member}")
         print(f"Group ID:  {group_str}")
-        print(f"Reliability Index: {final_score} / 100")
+        print(f"Reliability Index: {final_result}")
         print(f"Risk Tier: {tier}")
         print("="*40 + "\n")
